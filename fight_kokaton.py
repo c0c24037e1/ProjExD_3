@@ -141,11 +141,28 @@ class Bomb:
         screen.blit(self.img, self.rct)
 
 
+# 追加: シンプルなスコア表示
+class Score:
+    def __init__(self):
+        self.font = pg.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+        self.color = (0, 0, 255)
+        self.value = 0  # 撃墜数
+        
+
+    def add(self, n: int = 1):
+        self.value += n  # 追加: スコア加算
+
+    def update(self, screen: pg.Surface):
+        self.img = self.font.render(f"スコア: {self.value}", True, self.color)
+        screen.blit(self.img, (10, 600  ))
+
+
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
     screen = pg.display.set_mode((WIDTH, HEIGHT))    
     bg_img = pg.image.load("fig/pg_bg.jpg")
     bird = Bird((300, 200))
+
     # bomb = Bomb((255, 0, 0), 10)
     # bombs = []  # 爆弾用の空のリスト
     # for _ in range(NUM_OF_BOMBS):  # NUM_OF_BOMBS個の爆弾を追加
@@ -154,8 +171,10 @@ def main():
     bombs = [Bomb((255, 0, 0), 10) for _ in range(NUM_OF_BOMBS)]
 
     beam = None  # ゲーム初期化時にはビームは存在しない
+    score = Score()  # 追加: スコア
     clock = pg.time.Clock()
     tmr = 0
+
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -163,6 +182,7 @@ def main():
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 # スペースキー押下でBeamクラスのインスタンス生成
                 beam = Beam(bird)            
+
         screen.blit(bg_img, [0, 0])
         
         for bomb in bombs:
@@ -177,16 +197,21 @@ def main():
             if beam is not None:
                 if beam.rct.colliderect(bomb.rct):
                     # ビームと爆弾の衝突判定
+                    score.add(1)              # 追加: 撃墜で+1
                     beam, bombs[b] = None, None
                     bird.change_img(6, screen)
         bombs = [bomb for bomb in bombs if bomb is not None]
 
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
+
         if beam is not None:
             beam.update(screen)   
+
         for bomb in bombs:
             bomb.update(screen)
+
+        score.update(screen)  # 追加: 毎フレーム表示
         pg.display.update()
         tmr += 1
         clock.tick(50)
