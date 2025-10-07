@@ -101,7 +101,7 @@ class Beam:
         self.rct.left = bird.rct.right  # こうかとんの右座標
         self.vx, self.vy = +5, 0
 
-    # --- 課題2: 生存判定（True/False）を返すように拡張 ---
+    # 課題2の拡張を継承：生存判定を返す
     def update(self, screen: pg.Surface) -> bool:
         """
         ビームを速度ベクトルself.vx, self.vyに基づき移動させる
@@ -145,6 +145,25 @@ class Bomb:
         screen.blit(self.img, self.rct)
 
 
+# --- 課題3: 爆発エフェクト（短寿命の点滅）を追加 ---
+class Explosion:
+    def __init__(self, center: tuple[int, int], life: int = 20):
+        base = pg.image.load("fig/explosion.gif")  # 用意された画像を想定
+        self.frames = [base, pg.transform.flip(base, True, True)]
+        self.rct = self.frames[0].get_rect(center=center)
+        self.life = life
+        self.t = 0
+
+    def update(self, screen: pg.Surface) -> bool:
+        if self.life <= 0:
+            return False
+        frame = self.frames[(self.t // 2) % 2]
+        screen.blit(frame, self.rct)
+        self.t += 1
+        self.life -= 1
+        return self.life > 0
+
+
 # 追加: シンプルなスコア表示（課題1で実装済み）
 class Score:
     def __init__(self):
@@ -177,8 +196,10 @@ def main():
     score = Score()  # 追加: スコア
     beam_ins = []    # 課題1の変数は残す（未使用でも削除しない）
 
-    # --- 課題2: 複数ビーム用リストを追加 ---
+    # 課題2: 複数ビーム用リスト
     beams: list[Beam] = []
+    # --- 課題3: 爆発エフェクトのリスト ---
+    explosions: list[Explosion] = []
 
     clock = pg.time.Clock()
     tmr = 0
@@ -189,8 +210,8 @@ def main():
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 # スペースキー押下でBeamクラスのインスタンス生成（課題1）
-                beam = Beam(bird)
-                # --- 課題2: 複数ビームとして発射履歴に追加 ---
+                # beam = Beam(bird)
+                # 課題2: 複数ビームとして追加
                 beams.append(Beam(bird))
 
         screen.blit(bg_img, [0, 0])
@@ -203,15 +224,16 @@ def main():
                 time.sleep(1)
                 return
         
-        # --- 課題2: ビーム×爆弾の衝突（複数ビーム対応） ---
+        # 課題2+3: ビーム×爆弾の衝突（命中で爆発を出す）
         hit_any = False
         for bi, b in enumerate(beams):
             for mi, m in enumerate(bombs):
                 if b.rct.colliderect(m.rct):
-                    score.add(1)                 # 撃墜で+1
-                    beams[bi] = None             # 命中した弾を消す
-                    bombs[mi] = None             # 爆弾を消す
-                    bird.change_img(6, screen)   # 表情変化（任意）
+                    score.add(1)
+                    explosions.append(Explosion(m.rct.center))  # --- 課題3: ここで爆発 ---
+                    beams[bi] = None
+                    bombs[mi] = None
+                    bird.change_img(6, screen)
                     hit_any = True
                     break
             if hit_any:
@@ -222,20 +244,26 @@ def main():
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
 
-        # --- 課題2: ビームの生存管理（画面外は消す） ---
+        # 課題2: 画面外の弾は捨てる
         for i, b in enumerate(beams):
             if not b.update(screen):
                 beams[i] = None
         beams = [b for b in beams if b is not None]
 
-        # （課題1）単発ビームの描画は残すが、複数化後はなくてもOK
-        if beam is not None:
-            beam.update(screen)   
+        # （課題1）単発ビームの描画は残す
+        # if beam is not None:
+        #    beam.update(screen)   
 
         for bomb in bombs:
             bomb.update(screen)
 
-        score.update(screen)  # 毎フレーム表示
+        # --- 課題3: 爆発の寿命を更新し、終わったら消す ---
+        for i, ex in enumerate(explosions):
+            if not ex.update(screen):
+                explosions[i] = None
+        explosions = [ex for ex in explosions if ex is not None]
+
+        score.update(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
