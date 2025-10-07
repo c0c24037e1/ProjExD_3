@@ -160,6 +160,9 @@ class Bomb:
 
 # --- 課題3: 爆発エフェクト（短寿命の点滅）を追加 ---
 class Explosion:
+    """
+    爆発エフェクトに関するクラス
+    """
     def __init__(self, center: tuple[int, int], life: int = 20):
         base = pg.image.load("fig/explosion.gif")  # 用意された画像を想定
         self.frames = [base, pg.transform.flip(base, True, True)]
@@ -179,6 +182,9 @@ class Explosion:
 
 # 追加: シンプルなスコア表示（課題1で実装済み）
 class Score:
+    """
+    スコア計算に関するクラス
+    """
     def __init__(self):
         self.font = pg.font.SysFont("HG創英角ﾎﾟｯﾌﾟ体", 30)
         self.color = (0, 0, 255)
