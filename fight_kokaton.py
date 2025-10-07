@@ -11,7 +11,6 @@ NUM_OF_BOMBS = 5  # 爆弾の個数
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
-
 def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
     """
     オブジェクトが画面内or画面外を判定し，真理値タプルを返す関数
@@ -90,7 +89,7 @@ class Beam:
     """
     こうかとんが放つビームに関するクラス
     """
-    def __init__(self, bird:"Bird"):
+    def __init__(self, bird: "Bird"):
         """
         ビーム画像Surfaceを生成する
         引数 bird：ビームを放つこうかとん（Birdインスタンス）
@@ -124,7 +123,7 @@ class Bomb:
         引数1 color：爆弾円の色タプル
         引数2 rad：爆弾円の半径
         """
-        self.img = pg.Surface((2*rad, 2*rad))
+        self.img = pg.Surface((2 * rad, 2 * rad))
         pg.draw.circle(self.img, color, (rad, rad), rad)
         self.img.set_colorkey((0, 0, 0))
         self.rct = self.img.get_rect()
@@ -181,7 +180,7 @@ class Score:
 
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
-    screen = pg.display.set_mode((WIDTH, HEIGHT))    
+    screen = pg.display.set_mode((WIDTH, HEIGHT))
     bg_img = pg.image.load("fig/pg_bg.jpg")
     bird = Bird((300, 200))
 
@@ -194,7 +193,7 @@ def main():
 
     beam = None  # ゲーム初期化時にはビームは存在しない（課題1の名残）
     score = Score()  # 追加: スコア
-    beam_ins = []    # 課題1の変数は残す（未使用でも削除しない）
+    beam_ins = []  # 課題1の変数は残す（未使用でも削除しない）
 
     # 課題2: 複数ビーム用リスト
     beams: list[Beam] = []
@@ -215,7 +214,7 @@ def main():
                 beams.append(Beam(bird))
 
         screen.blit(bg_img, [0, 0])
-        
+
         for bomb in bombs:
             if bird.rct.colliderect(bomb.rct):
                 # ゲームオーバー時に，こうかとん画像を切り替え，1秒間表示させる
@@ -223,7 +222,7 @@ def main():
                 pg.display.update()
                 time.sleep(1)
                 return
-        
+
         # 課題2+3: ビーム×爆弾の衝突（命中で爆発を出す）
         hit_any = False
         for bi, b in enumerate(beams):
@@ -252,7 +251,7 @@ def main():
 
         # （課題1）単発ビームの描画は残す
         # if beam is not None:
-        #    beam.update(screen)   
+        #     beam.update(screen)
 
         for bomb in bombs:
             bomb.update(screen)
