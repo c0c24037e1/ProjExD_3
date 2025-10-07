@@ -11,6 +11,7 @@ NUM_OF_BOMBS = 5  # 爆弾の個数
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
+
 def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
     """
     オブジェクトが画面内or画面外を判定し，真理値タプルを返す関数
@@ -100,14 +101,17 @@ class Beam:
         self.rct.left = bird.rct.right  # こうかとんの右座標
         self.vx, self.vy = +5, 0
 
-    def update(self, screen: pg.Surface):
+    # --- 課題2: 生存判定（True/False）を返すように拡張 ---
+    def update(self, screen: pg.Surface) -> bool:
         """
         ビームを速度ベクトルself.vx, self.vyに基づき移動させる
-        引数 screen：画面Surface
+        画面内にいる間は描画し True、画面外に出たら False を返す
         """
-        if check_bound(self.rct) == (True, True):
-            self.rct.move_ip(self.vx, self.vy)
-            screen.blit(self.img, self.rct)    
+        self.rct.move_ip(self.vx, self.vy)
+        alive = (check_bound(self.rct) == (True, True))
+        if alive:
+            screen.blit(self.img, self.rct)
+        return alive
 
 
 class Bomb:
@@ -141,20 +145,19 @@ class Bomb:
         screen.blit(self.img, self.rct)
 
 
-# 追加: シンプルなスコア表示
+# 追加: シンプルなスコア表示（課題1で実装済み）
 class Score:
     def __init__(self):
-        self.font = pg.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+        self.font = pg.font.SysFont("HG創英角ﾎﾟｯﾌﾟ体", 30)
         self.color = (0, 0, 255)
         self.value = 0  # 撃墜数
-        
 
     def add(self, n: int = 1):
         self.value += n  # 追加: スコア加算
 
     def update(self, screen: pg.Surface):
         self.img = self.font.render(f"スコア: {self.value}", True, self.color)
-        screen.blit(self.img, (10, 600  ))
+        screen.blit(self.img, (10, 600))
 
 
 def main():
@@ -170,8 +173,13 @@ def main():
     #     bombs.append(bomb)
     bombs = [Bomb((255, 0, 0), 10) for _ in range(NUM_OF_BOMBS)]
 
-    beam = None  # ゲーム初期化時にはビームは存在しない
+    beam = None  # ゲーム初期化時にはビームは存在しない（課題1の名残）
     score = Score()  # 追加: スコア
+    beam_ins = []    # 課題1の変数は残す（未使用でも削除しない）
+
+    # --- 課題2: 複数ビーム用リストを追加 ---
+    beams: list[Beam] = []
+
     clock = pg.time.Clock()
     tmr = 0
 
@@ -180,8 +188,10 @@ def main():
             if event.type == pg.QUIT:
                 return
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
-                # スペースキー押下でBeamクラスのインスタンス生成
-                beam = Beam(bird)            
+                # スペースキー押下でBeamクラスのインスタンス生成（課題1）
+                beam = Beam(bird)
+                # --- 課題2: 複数ビームとして発射履歴に追加 ---
+                beams.append(Beam(bird))
 
         screen.blit(bg_img, [0, 0])
         
@@ -193,25 +203,39 @@ def main():
                 time.sleep(1)
                 return
         
-        for b, bomb in enumerate(bombs):
-            if beam is not None:
-                if beam.rct.colliderect(bomb.rct):
-                    # ビームと爆弾の衝突判定
-                    score.add(1)              # 追加: 撃墜で+1
-                    beam, bombs[b] = None, None
-                    bird.change_img(6, screen)
-        bombs = [bomb for bomb in bombs if bomb is not None]
+        # --- 課題2: ビーム×爆弾の衝突（複数ビーム対応） ---
+        hit_any = False
+        for bi, b in enumerate(beams):
+            for mi, m in enumerate(bombs):
+                if b.rct.colliderect(m.rct):
+                    score.add(1)                 # 撃墜で+1
+                    beams[bi] = None             # 命中した弾を消す
+                    bombs[mi] = None             # 爆弾を消す
+                    bird.change_img(6, screen)   # 表情変化（任意）
+                    hit_any = True
+                    break
+            if hit_any:
+                break
+        beams = [b for b in beams if b is not None]
+        bombs = [m for m in bombs if m is not None]
 
         key_lst = pg.key.get_pressed()
         bird.update(key_lst, screen)
 
+        # --- 課題2: ビームの生存管理（画面外は消す） ---
+        for i, b in enumerate(beams):
+            if not b.update(screen):
+                beams[i] = None
+        beams = [b for b in beams if b is not None]
+
+        # （課題1）単発ビームの描画は残すが、複数化後はなくてもOK
         if beam is not None:
             beam.update(screen)   
 
         for bomb in bombs:
             bomb.update(screen)
 
-        score.update(screen)  # 追加: 毎フレーム表示
+        score.update(screen)  # 毎フレーム表示
         pg.display.update()
         tmr += 1
         clock.tick(50)
