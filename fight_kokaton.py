@@ -3,12 +3,14 @@ import random
 import sys
 import time
 import pygame as pg
+import math  # --- 課題4: 向きに応じて回転するための角度計算 ---
 
 
 WIDTH = 1100  # ゲームウィンドウの幅
 HEIGHT = 650  # ゲームウィンドウの高さ
 NUM_OF_BOMBS = 5  # 爆弾の個数
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
 
 
 def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
@@ -56,6 +58,7 @@ class Bird:
         self.img = __class__.imgs[(+5, 0)]
         self.rct: pg.Rect = self.img.get_rect()
         self.rct.center = xy
+        self.dire = (+5, 0)  # --- 課題4: 現在向いているベクトル（デフォルト右） ---
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -82,6 +85,7 @@ class Bird:
             self.rct.move_ip(-sum_mv[0], -sum_mv[1])
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.img = __class__.imgs[tuple(sum_mv)]
+            self.dire = tuple(sum_mv)  # --- 課題4: 進行方向を保存 ---
         screen.blit(self.img, self.rct)
 
 
@@ -89,16 +93,26 @@ class Beam:
     """
     こうかとんが放つビームに関するクラス
     """
-    def __init__(self, bird: "Bird"):
+    def __init__(self, bird:"Bird"):
         """
         ビーム画像Surfaceを生成する
         引数 bird：ビームを放つこうかとん（Birdインスタンス）
         """
-        self.img = pg.image.load(f"fig/beam.png")  # ビームSurface
-        self.rct = self.img.get_rect()  # ビームRect
-        self.rct.centery = bird.rct.centery  # こうかとんの中心縦座標
-        self.rct.left = bird.rct.right  # こうかとんの右座標
-        self.vx, self.vy = +5, 0
+        # --- 課題4: こうかとんの向きに合わせて速度ベクトルを設定（静止なら右） ---
+        self.vx, self.vy = getattr(bird, "dire", (+5, 0))
+        if self.vx == 0 and self.vy == 0:
+            self.vx, self.vy = (+5, 0)
+
+        # --- 課題4: 向きに応じてビーム画像を回転 ---
+        base = pg.image.load(f"fig/beam.png")
+        angle = math.degrees(math.atan2(-self.vy, self.vx))  # +x基準、yは下向きなので符号反転
+        self.img = pg.transform.rotozoom(base, angle, 1.0)
+
+        self.rct = self.img.get_rect()
+        # --- 課題4: こうかとんの“前方”から発射（課題指示どおり 幅/高さ×(速度/5) に統一） ---
+        self.rct.centerx = bird.rct.centerx + bird.rct.width  * (self.vx / 5)
+        self.rct.centery = bird.rct.centery + bird.rct.height * (self.vy / 5)
+
 
     # 課題2の拡張を継承：生存判定を返す
     def update(self, screen: pg.Surface) -> bool:
@@ -123,7 +137,7 @@ class Bomb:
         引数1 color：爆弾円の色タプル
         引数2 rad：爆弾円の半径
         """
-        self.img = pg.Surface((2 * rad, 2 * rad))
+        self.img = pg.Surface((2*rad, 2*rad))
         pg.draw.circle(self.img, color, (rad, rad), rad)
         self.img.set_colorkey((0, 0, 0))
         self.rct = self.img.get_rect()
@@ -180,7 +194,7 @@ class Score:
 
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
-    screen = pg.display.set_mode((WIDTH, HEIGHT))
+    screen = pg.display.set_mode((WIDTH, HEIGHT))    
     bg_img = pg.image.load("fig/pg_bg.jpg")
     bird = Bird((300, 200))
 
@@ -193,7 +207,7 @@ def main():
 
     beam = None  # ゲーム初期化時にはビームは存在しない（課題1の名残）
     score = Score()  # 追加: スコア
-    beam_ins = []  # 課題1の変数は残す（未使用でも削除しない）
+    beam_ins = []    # 課題1の変数は残す（未使用でも削除しない）
 
     # 課題2: 複数ビーム用リスト
     beams: list[Beam] = []
@@ -214,15 +228,20 @@ def main():
                 beams.append(Beam(bird))
 
         screen.blit(bg_img, [0, 0])
-
+        
         for bomb in bombs:
             if bird.rct.colliderect(bomb.rct):
                 # ゲームオーバー時に，こうかとん画像を切り替え，1秒間表示させる
                 bird.change_img(8, screen)
+                # --- 課題4: Game Over表示（赤色） ---
+                go_font = pg.font.SysFont("HG創英角ﾎﾟｯﾌﾟ体", 72)
+                go_img = go_font.render("GAME OVER", True, (255, 0, 0))
+                go_rct = go_img.get_rect(center=(WIDTH//2, HEIGHT//2))
+                screen.blit(go_img, go_rct)
                 pg.display.update()
                 time.sleep(1)
                 return
-
+        
         # 課題2+3: ビーム×爆弾の衝突（命中で爆発を出す）
         hit_any = False
         for bi, b in enumerate(beams):
@@ -251,7 +270,7 @@ def main():
 
         # （課題1）単発ビームの描画は残す
         # if beam is not None:
-        #     beam.update(screen)
+        #    beam.update(screen)   
 
         for bomb in bombs:
             bomb.update(screen)
